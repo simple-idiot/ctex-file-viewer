@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CTEX to PNG Converter</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background-color: #f8f9fa;
+      color: #222;
+      margin: 0;
+      padding: 2rem;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .dark {
+      background-color: #111;
+      color: #eee;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      text-align: center;
+    }
+    input[type="file"] {
+      margin: 1rem 0;
+    }
+    button {
+      background-color: #007bff;
+      border: none;
+      color: white;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .output {
+      margin-top: 2rem;
+    }
+    .image-block {
+      margin-bottom: 2rem;
+    }
+    img {
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+    small {
+      display: block;
+      margin-top: 0.5rem;
+      color: #666;
+    }
+    .dark small {
+      color: #aaa;
+    }
+    #darkModeToggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: 1px solid #888;
+      border-radius: 20px;
+      padding: 0.4rem 0.8rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: inherit;
+    }
+  </style>
+</head>
+<body>
+  <button id="darkModeToggle">🌙 Dark Mode</button>
+  <div class="container">
+    <h1>CTEX to PNG Converter</h1>
+    <input type="file" id="fileInput" multiple accept=".ctex" />
+    <br />
+    <button id="convertBtn">Convert</button>
+    <div id="output" class="output"></div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const convertBtn = document.getElementById("convertBtn");
+    const output = document.getElementById("output");
+    const darkToggle = document.getElementById("darkModeToggle");
+
+    darkToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      darkToggle.textContent = document.body.classList.contains("dark")
+        ? "☀️ Light Mode"
+        : "🌙 Dark Mode";
+    });
+
+    convertBtn.addEventListener("click", async () => {
+      const files = fileInput.files;
+      if (!files.length) {
+        alert("Please select one or more .ctex files first!");
+        return;
+      }
+
+      output.innerHTML = "";
+      for (const file of files) {
+        const arrayBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        const riffIndex = findSubarray(bytes, [82, 73, 70, 70]); // 'RIFF'
+
+        if (riffIndex === -1) {
+          const block = document.createElement("div");
+          block.className = "image-block";
+          block.innerHTML = `<small>${file.name} — No image data found.</small>`;
+          output.appendChild(block);
+          continue;
+        }
+
+        const ddsBytes = bytes.slice(riffIndex);
+        const blob = new Blob([ddsBytes], { type: "image/vnd.ms-dds" });
+        const imgUrl = URL.createObjectURL(blob);
+
+        // Use browser-native DDS-to-image support if available
+        const img = document.createElement("img");
+        img.src = imgUrl;
+        img.alt = file.name;
+
+        const block = document.createElement("div");
+        block.className = "image-block";
+        block.appendChild(img);
+        const caption = document.createElement("small");
+        caption.textContent = file.name;
+        block.appendChild(caption);
+
+        output.appendChild(block);
+      }
+    });
+
+    function findSubarray(source, subarray) {
+      for (let i = 0; i < source.length - subarray.length; i++) {
+        let match = true;
+        for (let j = 0; j < subarray.length; j++) {
+          if (source[i + j] !== subarray[j]) {
+            match = false;
+            break;
+          }
+        }
+        if (match) return i;
+      }
+      return -1;
+    }
+  </script>
+</body>
+</html>
